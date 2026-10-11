@@ -135,10 +135,35 @@ if (existingRef.status === 200) {
   process.exit(1);
 }
 
-// 3. Create the tree.
+// 3. Compute deletions.
+//
+// `base_tree` makes the new tree an overlay: entries it names are replaced and
+// everything else is inherited. That is add/update-only, so a file deleted
+// locally would survive on the remote forever — observed directly, where
+// `tests/skills.test.mjs` was removed locally but stayed published. Deleting an
+// entry requires naming it with `sha: null`, so the remote tree is read first
+// and the difference computed.
+let deletions = [];
+if (baseTree) {
+  const base = await api('GET', `/repos/${owner}/${repo}/git/trees/${baseTree}?recursive=1`);
+  if (base.status !== 200) {
+    console.error(`cannot read the base tree: ${base.status}`);
+    process.exit(1);
+  }
+  const wanted = new Set(files);
+  deletions = base.body.tree
+    .filter((entry) => entry.type === 'blob' && !wanted.has(entry.path))
+    .map((entry) => ({ path: entry.path, mode: '100644', type: 'blob', sha: null }));
+  if (deletions.length > 0) {
+    console.log(`deleting   : ${deletions.length} file(s) no longer in the working tree`);
+    for (const d of deletions.slice(0, 20)) console.log(`   - ${d.path}`);
+  }
+}
+
+// 4. Create the tree.
 const treeRes = await api('POST', `/repos/${owner}/${repo}/git/trees`, {
   ...(baseTree ? { base_tree: baseTree } : {}),
-  tree,
+  tree: [...tree, ...deletions],
 });
 if (treeRes.status !== 201) {
   console.error(`tree failed: ${treeRes.status} ${JSON.stringify(treeRes.body).slice(0, 300)}`);
@@ -146,7 +171,7 @@ if (treeRes.status !== 201) {
 }
 console.log(`tree       : ${treeRes.body.sha.slice(0, 7)}`);
 
-// 4. Create the commit.
+// 5. Create the commit.
 const commitRes = await api('POST', `/repos/${owner}/${repo}/git/commits`, {
   message,
   tree: treeRes.body.sha,
@@ -158,7 +183,7 @@ if (commitRes.status !== 201) {
 }
 console.log(`commit     : ${commitRes.body.sha.slice(0, 7)}`);
 
-// 5. Point the branch at it.
+// 6. Point the branch at it.
 //
 // GitHub's ref routes are asymmetric: reading one ref uses `/git/ref/{ref}`
 // (singular) while updating it uses `/git/refs/{ref}` (plural). Using the
