@@ -16,8 +16,8 @@
  *  - Edits to a SKILL.md body are picked up on the next load because the registry
  *    re-reads the body on every `get()`; only frontmatter changes need a reload.
  */
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync, statSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const name = 'everything-claude-code';
@@ -187,9 +187,110 @@ function describeBundle(skills, log) {
   };
 }
 
+/**
+ * Memory persistence: the two ECC hooks the Claude Code bridge cannot run.
+ *
+ * ECC ships `PreCompact` and `SessionEnd` command hooks under
+ * `hooks/memory-persistence/`. The DSH bridge supports seven events and those
+ * two are not among them, so they were simply absent from this port — the README
+ * listed that as a known gap.
+ *
+ * A bridge cannot be extended from outside it, so a bridge limitation is not a
+ * dead end: DSH exposes the same moments as native host events, which a plugin
+ * *can* listen to. That is what these listeners are:
+ *
+ *   ECC PreCompact -> `session/event` carrying `compaction/start`
+ *   ECC SessionEnd -> `agent/disposed`
+ *
+ * The behaviour follows ECC's scripts, with one deliberate change: ECC wrote to
+ * `~/.claude/sessions/` and mutated a `*.tmp` file with `sed`. Both are Claude
+ * Code shapes that do not exist here, so the notes go to `$DSH_HOME/` instead,
+ * as append-only Markdown. Nothing is mutated in place, and a failure to write
+ * never breaks the session — a memory hook must not be able to do that.
+ */
+
+/** Where the session notes live, under the DSH home. */
+function sessionNotesDir() {
+  const home = process.env.DSH_HOME ?? join(process.env.USERPROFILE ?? '.', '.dsh');
+  return join(home, 'sessions', 'memory');
+}
+
+/** Append one timestamped line, creating the directory if needed. */
+function appendNote(file, line, log) {
+  try {
+    mkdirSync(dirname(file), { recursive: true });
+    appendFileSync(file, `${line}\n`, 'utf8');
+    return true;
+  } catch (error) {
+    // A memory hook that throws would break the session it is trying to record.
+    log(`could not write ${file}: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
+/** `YYYY-MM-DD HH:MM` in local time, matching ECC's `date` format. */
+function stamp(date = new Date()) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+    `${pad(date.getHours())}:${pad(date.getMinutes())}`
+  );
+}
+
+/** `YYYY-MM-DD`, for the daily file name. */
+function dayStamp(date = new Date()) {
+  return stamp(date).slice(0, 10);
+}
+
+/**
+ * ECC's PreCompact: note that compaction is about to replace history.
+ *
+ * Listens for the durable `compaction/start` marker rather than a bespoke hook,
+ * because that event exists only when a compaction is genuinely beginning, and
+ * it is recorded before summarization — exactly the "before" moment ECC wanted.
+ */
+function installPreCompactNote(ctx, log, note) {
+  ctx.on('session/event', (session, event) => {
+    if (event?.type !== 'compaction/start') return;
+    const file = join(sessionNotesDir(), `${dayStamp()}-compaction.md`);
+    const written = appendNote(
+      file,
+      `- ${stamp()} — context compaction started (session ${session?.id ?? 'unknown'})`,
+      log,
+    );
+    if (written) note(`PreCompact equivalent: noted compaction in ${file}`);
+  });
+}
+
+/**
+ * ECC's SessionEnd: record that a session finished.
+ *
+ * `agent/disposed` fires after driver quiescence and before session detachment,
+ * which is the closest native equivalent to a session ending. The session id is
+ * still readable at that point, so the note can name it.
+ */
+function installSessionEndNote(ctx, log, note) {
+  ctx.on('agent/disposed', (payload) => {
+    // A memory hook must never break the session it records, so the payload is
+    // read defensively: a missing or malformed payload still produces a note.
+    const agent = payload?.agent;
+    const file = join(sessionNotesDir(), `${dayStamp()}-sessions.md`);
+    const written = appendNote(
+      file,
+      `- ${stamp()} — session ${agent?.id ?? 'unknown'} ended`,
+      log,
+    );
+    if (written) note(`SessionEnd equivalent: noted the end of ${agent?.id ?? 'unknown'}`);
+  });
+}
+
 export function apply(ctx, config = {}) {
   const log = (message) => {
     ctx.logger?.warn?.(`[everything-claude-code] ${message}`);
+  };
+  /** Success narration, kept off the warning channel so warnings stay meaningful. */
+  const note = (message) => {
+    ctx.logger?.info?.(`[everything-claude-code] ${message}`);
   };
 
   // Register a PROVIDER, not one registration per skill.
@@ -221,6 +322,13 @@ export function apply(ctx, config = {}) {
     ctx.logger?.info?.(
       `[everything-claude-code] skill provider registered (${readSkillCandidates(log).length} skills)`,
     );
+  }
+
+  // The two ECC hooks the Claude Code bridge cannot run, replaced by native host
+  // listeners. Guarded because a host context may carry no event bus.
+  if (typeof ctx.on === 'function') {
+    installPreCompactNote(ctx, log, note);
+    installSessionEndNote(ctx, log, note);
   }
 
   // The Settings page reads its values here instead of re-deriving plugin state

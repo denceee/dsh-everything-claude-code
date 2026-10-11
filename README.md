@@ -115,12 +115,18 @@ node tests/run-all.mjs
 
 | Suite | Checks | What it proves |
 |---|---|---|
-| `hooks.test.mjs` | 18 | Each hook's decision against the contract this bridge honors |
+| `hooks.test.mjs` | 23 | Each hook's decision against the contract this bridge honors |
 | `preset.test.mjs` | 15 | The preset satisfies the agent-preset schema and names the ECC practices |
 | `client-bundle.test.mjs` | 14 | The browser factory loads, exports, and renders the page |
-| `status-payload.test.mjs` | 11 | The route answers, and every field the page reads exists |
-| `skills.test.mjs` | 9 | Every skill satisfies the real `dsh-skill` grammar |
+| `status-payload.test.mjs` | 12 | The route answers, and every field the page reads exists |
+| `memory-hooks.test.mjs` | 11 | The two bridge-unsupported events are covered by native listeners |
+| `skill-catalog.test.mjs` | 11 | Every shipped skill is well formed and collides with no installed one |
+| `skill-provider.test.mjs` | 11 | A body edit is visible on the next load, with no stale cache |
+| `no-stale-refs.test.mjs` | 10 | No Claude Code path, command, tool or agent name survives in prose |
+| `preset-mount.test.mjs` | 9 | Every preset child package resolves, so the preset can mount |
 | `bridge-parse.test.mjs` | 7 | No event or matcher is silently dropped |
+
+123 checks across 10 suites.
 
 Diagnostic helpers, which read the authoritative session log rather than guessing:
 
@@ -152,27 +158,51 @@ takes the reload path instead.
 ## Layout
 
 ```
-index.js              Host half: publishes skills + serves the Settings-page status route
+index.js              Host half: skills provider, status route, memory listeners
 client.js             Client half: the Chinese Settings page
 cordis.patch.yml      Bundle patch: the skills row and the hook-bridge row
 presets/              The Everything Claude Code agent preset
 locale/               Display metadata for the plugin card (en, zh)
-skills/               11 adapted skill bundles
+skills/               11 ported skills + 24 generated ecc-* skills
 resources/            rules, commands, agents, contexts
 hooks/hooks.json      Adapted hook config (DSH tool names)
 hooks/scripts/        One script per hook, plus lib.mjs
-scripts/              Idempotent adapters
+scripts/              Idempotent adapters and GitHub helpers
 tests/                Test suites and session-log diagnostics
 ```
 
+## Memory persistence (the two events the bridge cannot run)
+
+The Claude Code hook bridge supports seven events, and ECC's `PreCompact` and
+`SessionEnd` hooks are not among them — so at first this port had no memory
+persistence at all.
+
+A bridge cannot be extended from outside it, but that is not a dead end: DSH
+exposes the same two moments as **native host events**, which this plugin
+listens to directly. Both replacements live in `index.js`:
+
+| ECC hook | Replaced by | When it fires |
+|---|---|---|
+| `PreCompact` | `session/event` carrying `compaction/start` | compaction is genuinely beginning, before summarization |
+| `SessionEnd` | `agent/disposed` | after driver quiescence, before session detachment |
+
+Notes are appended to `$DSH_HOME/sessions/memory/` as Markdown, one file per day:
+`YYYY-MM-DD-compaction.md` and `YYYY-MM-DD-sessions.md`.
+
+Two deliberate departures from ECC's scripts: they wrote to `~/.claude/sessions/`
+and rewrote a `*.tmp` file with `sed`, both Claude Code shapes that do not exist
+here. These notes are append-only, nothing is mutated in place, and a write
+failure is logged and swallowed — a memory hook must never be able to break the
+session it is recording.
+
 ## Known limits
 
-- ECC's `PreCompact` and `SessionEnd` hooks are not ported: the bridge does not support those
-  events, so `hooks/memory-persistence/*.sh` has no equivalent and memory persistence is not
-  reproduced.
-- `SubagentStart`/`SubagentStop` report a constant `agent_type` and start-context only reaches
+- `SubagentStart`/`SubagentStop` report a constant `agent_type`, and start-context only reaches
   an in-process child.
 - The `Stop` hook cannot block safely: the bridge always reports `stop_hook_active: false`, so
   an unconditional block would loop. Ours only warns.
+- Memory persistence records *that* compaction and session end happened, not the session's
+  content, and it does not reload a previous session's context into a new one. ECC's
+  `session-start` hook covers the load side and runs through the bridge.
 - ECC's `project-guidelines-example` skill references a specific unrelated production project;
   it is kept only as a template.
