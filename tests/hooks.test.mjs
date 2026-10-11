@@ -52,6 +52,23 @@ function pickAll(event, subject) {
   return groupFor(event, subject).hooks.map((hook) => substitute(hook.command));
 }
 
+/**
+ * Select one hook by the script it runs, not by its position.
+ *
+ * Positional selection (`pickAll(...)[2]`) breaks whenever a hook is inserted
+ * ahead of it — which is exactly what adding a rule does. Reading the script
+ * name is stable under insertion and names the behaviour under test.
+ */
+function pickScript(event, subject, script) {
+  const wanted = `${script}.mjs`;
+  const commands = pickAll(event, subject);
+  const found = commands.find((c) => c.includes(wanted));
+  if (!found) {
+    throw new Error(`no ${event}/${subject} hook runs ${wanted}; available: ${commands.map((c) => c.split(/[\\/]/).pop()).join(', ')}`);
+  }
+  return found;
+}
+
 /** Run one hook command the way the bridge does. */
 function runHook(command, payload) {
   const env = { ...process.env, CLAUDE_PROJECT_DIR: packageRoot, CLAUDE_PLUGIN_ROOT: packageRoot };
@@ -84,7 +101,7 @@ function assert(condition, message) {
 // wrong test: it passed while the real bridge recorded exit 2 as a non-blocking
 // error and let the command run.
 check('PreToolUse/pwsh blocks a dev server', () => {
-  const [devServer] = pickAll('PreToolUse', 'pwsh');
+  const devServer = pickScript('PreToolUse', 'pwsh', 'block-dev-server');
   const r = runHook(devServer, { tool_name: 'pwsh', tool_input: { command: 'npm run dev' } });
   assert(r.code === 0, `expected clean exit 0 so the bridge reads stdout, got ${r.code}`);
   const decision = JSON.parse(r.stdout || '{}')?.hookSpecificOutput;
@@ -94,20 +111,20 @@ check('PreToolUse/pwsh blocks a dev server', () => {
 });
 
 check('PreToolUse/pwsh allows an ordinary command', () => {
-  const [devServer] = pickAll('PreToolUse', 'pwsh');
+  const devServer = pickScript('PreToolUse', 'pwsh', 'block-dev-server');
   const r = runHook(devServer, { tool_name: 'pwsh', tool_input: { command: 'git status' } });
   assert(r.code === 0, `expected exit 0, got ${r.code}; stderr=${r.stderr}`);
 });
 
 check('PreToolUse/pwsh reminds about a long-running command', () => {
-  const [, longRunning] = pickAll('PreToolUse', 'pwsh');
+  const longRunning = pickScript('PreToolUse', 'pwsh', 'remind-long-running');
   const r = runHook(longRunning, { tool_name: 'pwsh', tool_input: { command: 'npm test' } });
   assert(r.code === 0, `expected a non-blocking exit 0, got ${r.code}`);
   assert(/background/i.test(r.stderr), `expected a background-job reminder, got: ${r.stderr}`);
 });
 
 check('PreToolUse/pwsh asks before git push', () => {
-  const [, , gitPush] = pickAll('PreToolUse', 'pwsh');
+  const gitPush = pickScript('PreToolUse', 'pwsh', 'confirm-git-push');
   const r = runHook(gitPush, { tool_name: 'pwsh', tool_input: { command: 'git push origin main' } });
   assert(r.code === 0, `expected exit 0, got ${r.code}; stderr=${r.stderr}`);
   const parsed = JSON.parse(r.stdout || '{}');
@@ -118,7 +135,7 @@ check('PreToolUse/pwsh asks before git push', () => {
 });
 
 check('PreToolUse/pwsh git-push hook stays clean on other commands', () => {
-  const [, , gitPush] = pickAll('PreToolUse', 'pwsh');
+  const gitPush = pickScript('PreToolUse', 'pwsh', 'confirm-git-push');
   const r = runHook(gitPush, { tool_name: 'pwsh', tool_input: { command: 'git commit -m x' } });
   assert(r.code === 0, `expected exit 0, got ${r.code}; stderr=${r.stderr}`);
   assert(JSON.parse(r.stdout || '{}')?.hookSpecificOutput === undefined, 'expected no decision');

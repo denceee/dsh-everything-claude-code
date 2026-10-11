@@ -4,6 +4,32 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
+# Secrets.
+#
+# The secret-blocking hook deliberately allows writing into a key store, because
+# that is where a real key belongs. That exemption only stays safe if git ignores
+# those files, so this list is the other half of the rule and must cover every
+# path the hook treats as a key store.
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials.json
+credentials.yaml
+credentials.yml
+secrets.json
+secrets.yaml
+secrets.yml
+.netrc
+_netrc
+.git-credentials
+
 # Local test scratch
 *.local
 .tmp/

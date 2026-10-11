@@ -8,6 +8,46 @@ adapted Claude Code hook set, an **agent preset**, and a Chinese Settings page.
 
 Verified against DSH `0.2.0-rc.2`, profile `desktop`.
 
+## Blocking rules
+
+Five `PreToolUse` rules deny a tool call outright. Two are ported from ECC; three
+were added for this port.
+
+| Rule | Denies |
+|---|---|
+| `block-dev-server` | starting a dev server in the foreground, where its log is unreachable |
+| `block-destructive-command` | force push, `reset --hard`, `clean -f`, forced branch delete, remote branch delete, and a recursive delete of an unscoped or out-of-workspace path |
+| `block-hardcoded-secret` | writing a real credential into source, config, or docs |
+| `block-stray-docs` | a loose `.md`/`.txt` outside the conventional locations |
+| `confirm-git-push` | not a deny — it raises an approval prompt before a push |
+
+### What is deliberately allowed
+
+A blocking rule that fires on ordinary work gets switched off, and then it
+protects nothing. So each rule has explicit exemptions, asserted by tests:
+
+- **`.env`, `*.pem`, `*.key`, `credentials.*`** are writable. A key store is where
+  a real key belongs; flagging it would train the user to bypass the hook. The
+  other half of that bargain is `.gitignore`, which covers every path the hook
+  treats as a key store.
+- **Secrets are matched by credential shape, never by variable name.** This
+  bundle ships nine secret-shaped placeholders in its own ported security
+  guidance (`const apiKey = "sk-proj-xxxxx"`), so a name-keyed rule would block
+  edits to the plugin's own docs. What is matched is a known issuer prefix with a
+  real body — OpenAI `sk-`, GitHub `ghp_`/`github_pat_`, AWS `AKIA`, Google
+  `AIza`, Slack, Stripe, npm, PyPI, GitLab, Hugging Face, PEM headers, JWTs — or
+  a mixed-case-plus-digit literal assigned to a secret-like name.
+- **`tests/`, `fixtures/`, `examples/`** are exempt by path: a fixture with a
+  plausible-looking key is correct, not a leak.
+- **Ordinary git and ordinary deletes pass**: `git push`, `git reset HEAD~1`,
+  `git branch -d`, `git clean -n`, `rm -rf ./node_modules`, and
+  `rm -rf <workspace>/dist` are all allowed.
+- **`--dry-run` and `-n`** are respected, so a command can be reviewed before it
+  is trusted.
+
+Every rule is one script under `hooks/scripts/`, so a rule can be removed by
+deleting its entry from `hooks/hooks.json` without touching the others.
+
 ## The agent preset (the "mode")
 
 `presets/everything-claude-code.patch.yml` declares a selectable session mode named
@@ -116,6 +156,8 @@ node tests/run-all.mjs
 | Suite | Checks | What it proves |
 |---|---|---|
 | `hooks.test.mjs` | 23 | Each hook's decision against the contract this bridge honors |
+| `blocking-hooks.test.mjs` | 24 | The risk hooks deny through the channel this bridge honours |
+| `risk-detection.test.mjs` | 41 | The detection logic, including the cases it must NOT flag |
 | `preset.test.mjs` | 15 | The preset satisfies the agent-preset schema and names the ECC practices |
 | `client-bundle.test.mjs` | 14 | The browser factory loads, exports, and renders the page |
 | `status-payload.test.mjs` | 12 | The route answers, and every field the page reads exists |
@@ -126,7 +168,7 @@ node tests/run-all.mjs
 | `preset-mount.test.mjs` | 9 | Every preset child package resolves, so the preset can mount |
 | `bridge-parse.test.mjs` | 7 | No event or matcher is silently dropped |
 
-123 checks across 10 suites.
+188 checks across 12 suites.
 
 Diagnostic helpers, which read the authoritative session log rather than guessing:
 
