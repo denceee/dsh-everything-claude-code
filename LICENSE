@@ -19,13 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This project adapts the following upstream work:
-
-  everything-claude-code — https://github.com/WorldFlowAI/everything-claude-code
-  Copyright (c) Affaan Mustafa, MIT License.
-
-The adapted skills, rules, commands, personas, and the ECC working agreement
-derive from that project. See NOTICE for details.
