@@ -4,7 +4,7 @@ description: Verification Loop Skill
 ---
 # Verification Loop Skill
 
-A comprehensive verification system for Claude Code sessions.
+A comprehensive verification system for DSH sessions.
 
 ## When to Use
 
@@ -115,7 +115,7 @@ Set a mental checkpoint:
 - After finishing a component
 - Before moving to next task
 
-Run: /verify
+Follow `resources/commands/verify.md`
 ```
 
 ## Integration with Hooks

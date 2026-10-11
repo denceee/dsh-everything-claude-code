@@ -22,12 +22,12 @@ MANDATORY workflow:
 
 ## Troubleshooting Test Failures
 
-1. Use **tdd-guide** agent
+1. tdd-guide persona (`resources/agents/tdd-guide.md`)
 2. Check test isolation
 3. Verify mocks are correct
 4. Fix implementation, not tests (unless tests are wrong)
 
 ## Agent Support
 
-- **tdd-guide** - Use PROACTIVELY for new features, enforces write-tests-first
-- **e2e-runner** - Playwright E2E testing specialist
+- **tdd-guide persona (`resources/agents/tdd-guide.md`)** - Use PROACTIVELY for new features, enforces write-tests-first
+- **e2e-runner persona (`resources/agents/e2e-runner.md`)** - Playwright E2E testing specialist

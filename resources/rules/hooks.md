@@ -9,7 +9,7 @@
 - **PostToolUse**: After tool execution (auto-format, checks)
 - **Stop**: When session ends (final verification)
 
-## Current Hooks (in ~/.claude/settings.json)
+## Current Hooks (in the DSH profile patch (`~/.dsh/cordis.patch.yml`))
 
 ### PreToolUse
 - **tmux reminder**: Suggests tmux for long-running commands (npm, pnpm, yarn, cargo, etc.)

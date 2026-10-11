@@ -17,11 +17,18 @@ const packageRoot = join(here, '..');
 const registered = [];
 const routes = [];
 let handler;
+let providerFactory = null;
 
 const ctx = {
   logger: { warn: () => {}, info: () => {} },
   effect: (factory) => factory(),
-  skills: { register: (skill) => (registered.push(skill), () => {}) },
+  skills: {
+    // The Host half registers a provider; capture it so its catalog can be read.
+    registerProvider: (create) => {
+      providerFactory = create;
+      return () => {};
+    },
+  },
   inject: (deps, callback) => {
     const scoped = {
       get: (name) =>
@@ -45,9 +52,10 @@ const ctx = {
 const plugin = await import(pathToFileURL(join(packageRoot, 'index.js')).href);
 
 const results = [];
-function check(name, fn) {
+/** Await the body: an async check otherwise settles after the reporting pass. */
+async function check(name, fn) {
   try {
-    fn();
+    await fn();
     results.push({ name, ok: true });
   } catch (error) {
     results.push({ name, ok: false, detail: error?.message ?? String(error) });
@@ -57,39 +65,46 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-check('apply runs without throwing', () => {
+await check('apply runs without throwing', () => {
   plugin.apply(ctx, {});
 });
 
-check('still publishes all 11 skills', () => {
+await check('registers a skill provider', () => {
+  assert(providerFactory !== null, 'no provider registered');
+});
+
+let provider;
+await check('the provider lists all 11 skills', async () => {
+  provider = providerFactory({ signal: new AbortController().signal, invalidate: () => {} });
+  const out = await provider.list({});
+  registered.push(...(Array.isArray(out) ? out : out.candidates));
   assert(registered.length === 11, `expected 11 skills, got ${registered.length}`);
 });
 
-check('registers exactly one status route', () => {
+await check('registers exactly one status route', () => {
   assert(routes.length === 1, `expected 1 route, got ${routes.length}`);
 });
 
-check('the route is a GET under the authenticated /api fence', () => {
+await check('the route is a GET under the authenticated /api fence', () => {
   const route = routes[0];
   assert(route.path === '/api/everything-claude-code/status', `wrong path: ${route.path}`);
   assert(Array.isArray(route.methods) && route.methods.includes('GET'), 'must accept GET');
 });
 
-let payload;
-check('the route answers a JSON payload', async () => {
+await check('the route answers a JSON payload', () => {
   assert(typeof handler === 'function', 'no handler captured');
 });
 
 const response = await handler(new Request('http://localhost/api/everything-claude-code/status'));
 const body = await response.json();
-payload = body?.value;
+const payload = body?.value;
 
-check('the payload is ok:true with a value object', () => {
+await check('the payload is ok:true with a value object', () => {
   assert(body?.ok === true, 'ok must be true');
   assert(payload && typeof payload === 'object', 'value must be an object');
 });
 
-check('every field the page reads is present', () => {
+await check('every field the page reads is present', () => {
   for (const field of ['description', 'repository', 'skills', 'hooks', 'counts', 'notes']) {
     assert(payload[field] !== undefined, `missing field "${field}"`);
   }
@@ -99,20 +114,20 @@ check('every field the page reads is present', () => {
   assert(payload.counts && typeof payload.counts === 'object', 'counts must be an object');
 });
 
-check('counts match the resources on disk', () => {
+await check('counts match the resources on disk', () => {
   assert(payload.counts.rules === 8, `expected 8 rules, got ${payload.counts.rules}`);
   assert(payload.counts.prompts === 15, `expected 15 prompts, got ${payload.counts.prompts}`);
   assert(payload.counts.personas === 9, `expected 9 personas, got ${payload.counts.personas}`);
   assert(payload.counts.resources === 35, `expected 35 resources, got ${payload.counts.resources}`);
 });
 
-check('skills are sorted and match the published set', () => {
+await check('skills are sorted and match the published set', () => {
   const sorted = [...payload.skills].sort();
   assert(JSON.stringify(payload.skills) === JSON.stringify(sorted), 'skills must be sorted for a stable page');
   assert(payload.skills.includes('tdd-workflow'), 'expected tdd-workflow in the list');
 });
 
-check('hook entries carry the fields the page renders', () => {
+await check('hook entries carry the fields the page renders', () => {
   assert(payload.hooks.length > 0, 'expected at least one hook point');
   for (const hook of payload.hooks) {
     assert(typeof hook.event === 'string' && hook.event.length > 0, 'hook.event must be a string');
@@ -122,7 +137,7 @@ check('hook entries carry the fields the page renders', () => {
   }
 });
 
-check('the payload is serializable (no functions leak to the browser)', () => {
+await check('the payload is serializable (no functions leak to the browser)', () => {
   const json = JSON.stringify(payload);
   assert(json.length > 0, 'payload did not serialize');
   assert(!json.includes('function'), 'payload contains a function');

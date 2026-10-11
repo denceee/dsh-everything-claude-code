@@ -28,6 +28,12 @@ export const inject = ['skills'];
 const PACKAGE_ROOT = fileURLToPath(new URL('.', import.meta.url));
 const SKILLS_DIR = join(PACKAGE_ROOT, 'skills');
 
+/** Provider name registered on `ctx.skills`. */
+const PROVIDER_NAME = 'everything-claude-code';
+
+/** Packaged-bundle precedence, matching `BUNDLED_SKILL_RANK` in dsh-skill. */
+const BUNDLED_SKILL_RANK = 600;
+
 /** Frontmatter keys DSH understands; other ECC keys are kept as metadata. */
 const INVOCATION_KEYS = new Set(['user-invocable', 'disable-model-invocation']);
 
@@ -61,17 +67,24 @@ function strictBoolean(value) {
   return undefined;
 }
 
-/** Read every `skills/<name>/SKILL.md` bundle into a registration. */
-function readSkillBundles(log) {
+/**
+ * Read every `skills/<name>/SKILL.md` bundle as a catalog *candidate*.
+ *
+ * Only metadata is parsed here. The body is deliberately NOT read: a candidate
+ * is cached by the registry, so capturing the body would freeze it at plugin
+ * load and an edit to a SKILL.md would never reach the model. The body is
+ * loaded on demand in `get()` below.
+ */
+function readSkillCandidates(log) {
   if (!existsSync(SKILLS_DIR)) return [];
-  const registrations = [];
+  const candidates = [];
   for (const entry of readdirSync(SKILLS_DIR)) {
     const dir = join(SKILLS_DIR, entry);
     if (!statSync(dir).isDirectory()) continue;
     const file = join(dir, 'SKILL.md');
     if (!existsSync(file)) continue;
     try {
-      const { attributes, body } = parseFrontmatter(readFileSync(file, 'utf8'));
+      const { attributes } = parseFrontmatter(readFileSync(file, 'utf8'));
       const skillName = attributes.name ?? entry;
       if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(skillName)) {
         log(`skipping "${entry}": name "${skillName}" is not kebab-case`);
@@ -89,21 +102,28 @@ function readSkillBundles(log) {
         if (INVOCATION_KEYS.has(key)) continue;
         metadata[key] = value;
       }
-      registrations.push({
+      candidates.push({
         name: skillName,
         description,
         ...(attributes.whenToUse ? { whenToUse: attributes.whenToUse } : {}),
         path: file,
         source: 'bundled',
-        content: body.replace(/^\s+/, ''),
+        provider: PROVIDER_NAME,
+        // The filesystem rank: this provider is a packaged bundle, so it loses
+        // to a project-local skill of the same name, as a bundled root does.
+        rank: BUNDLED_SKILL_RANK,
         invocation: { modelInvocable, userInvocable },
         metadata,
+        // The provider-owned handle `get()` receives back. It is the absolute
+        // path, so a renamed directory surfaces as "no longer loadable" rather
+        // than a stale body.
+        locator: file,
       });
     } catch (error) {
       log(`skipping "${entry}": ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  return registrations;
+  return candidates;
 }
 
 /**
@@ -171,12 +191,36 @@ export function apply(ctx, config = {}) {
   const log = (message) => {
     ctx.logger?.warn?.(`[everything-claude-code] ${message}`);
   };
-  const skills = readSkillBundles(log);
-  for (const skill of skills) {
-    ctx.effect(() => ctx.skills.register(skill), `everything-claude-code: ${skill.name}`);
-  }
+
+  // Register a PROVIDER, not one registration per skill.
+  //
+  // The registry caches candidates, so a `ctx.skills.register()` call carries its
+  // `content` string with it and freezes that body at plugin load. Editing a
+  // SKILL.md then has no effect until reload — observed directly: the tool
+  // returned pre-edit text while the file on disk was already fixed.
+  //
+  // A provider's `get()` runs on every load, so the body is always current. That
+  // is the same split `dsh-skill-filesystem` uses, and it makes an edit to a
+  // SKILL.md visible on the next load without a reload.
+  ctx.effect(
+    () =>
+      ctx.skills.registerProvider((control) => ({
+        name: PROVIDER_NAME,
+        list: async () => readSkillCandidates(log),
+        get: async (candidate) => {
+          const file = typeof candidate.locator === 'string' ? candidate.locator : undefined;
+          if (file === undefined || !existsSync(file)) return undefined;
+          const { body } = parseFrontmatter(readFileSync(file, 'utf8'));
+          return { ...candidate, content: body.replace(/^\s+/, '') };
+        },
+      })),
+    'everything-claude-code: skill provider',
+  );
+
   if (config.verbose) {
-    ctx.logger?.info?.(`[everything-claude-code] published ${skills.length} skills`);
+    ctx.logger?.info?.(
+      `[everything-claude-code] skill provider registered (${readSkillCandidates(log).length} skills)`,
+    );
   }
 
   // The Settings page reads its values here instead of re-deriving plugin state
@@ -197,7 +241,7 @@ export function apply(ctx, config = {}) {
           requestBody: 'buffered',
           fetch: async () =>
             Response.json(
-              { ok: true, value: describeBundle(skills, log) },
+              { ok: true, value: describeBundle(readSkillCandidates(log), log) },
               { headers: { 'cache-control': 'no-store' } },
             ),
         }),

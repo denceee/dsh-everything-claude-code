@@ -4,7 +4,7 @@ description: Eval Harness Skill
 ---
 # Eval Harness Skill
 
-A formal evaluation framework for Claude Code sessions, implementing eval-driven development (EDD) principles.
+A formal evaluation framework for DSH sessions, implementing eval-driven development (EDD) principles.
 
 ## Philosophy
 
@@ -17,10 +17,10 @@ Eval-Driven Development treats evals as the "unit tests of AI development":
 ## Eval Types
 
 ### Capability Evals
-Test if Claude can do something it couldn't before:
+Test if the model can do something it couldn't before:
 ```markdown
 [CAPABILITY EVAL: feature-name]
-Task: Description of what Claude should accomplish
+Task: Description of what the model should accomplish
 Success Criteria:
   - [ ] Criterion 1
   - [ ] Criterion 2
@@ -56,7 +56,7 @@ npm run build && echo "PASS" || echo "FAIL"
 ```
 
 ### 2. Model-Based Grader
-Use Claude to evaluate open-ended outputs:
+Use the model to evaluate open-ended outputs:
 ```markdown
 [MODEL GRADER PROMPT]
 Evaluate the following code change:
@@ -155,19 +155,19 @@ Status: READY FOR REVIEW
 
 ### Pre-Implementation
 ```
-/eval define feature-name
+follow `resources/commands/eval.md` with `define feature-name`
 ```
-Creates eval definition file at `.claude/evals/feature-name.md`
+Creates eval definition file at `.dsh/evals/feature-name.md`
 
 ### During Implementation
 ```
-/eval check feature-name
+follow `resources/commands/eval.md` with `check feature-name`
 ```
 Runs current evals and reports status
 
 ### Post-Implementation
 ```
-/eval report feature-name
+follow `resources/commands/eval.md` with `report feature-name`
 ```
 Generates full eval report
 
@@ -175,7 +175,7 @@ Generates full eval report
 
 Store evals in project:
 ```
-.claude/
+.dsh/
   evals/
     feature-xyz.md      # Eval definition
     feature-xyz.log     # Eval run history
@@ -214,7 +214,7 @@ Regression Evals:
 [Write code]
 
 ### Phase 3: Evaluate
-Run: /eval check add-authentication
+Follow `resources/commands/eval.md` with `check add-authentication`
 
 ### Phase 4: Report
 EVAL REPORT: add-authentication
