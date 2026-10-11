@@ -158,6 +158,7 @@ node tests/run-all.mjs
 | `hooks.test.mjs` | 23 | Each hook's decision against the contract this bridge honors |
 | `blocking-hooks.test.mjs` | 24 | The risk hooks deny through the channel this bridge honours |
 | `risk-detection.test.mjs` | 41 | The detection logic, including the cases it must NOT flag |
+| `dual-version.test.mjs` | 15 | Correct behaviour under both the 0.2.0 and 0.2.1 directory contracts |
 | `preset.test.mjs` | 15 | The preset satisfies the agent-preset schema and names the ECC practices |
 | `client-bundle.test.mjs` | 14 | The browser factory loads, exports, and renders the page |
 | `status-payload.test.mjs` | 12 | The route answers, and every field the page reads exists |
@@ -168,7 +169,7 @@ node tests/run-all.mjs
 | `preset-mount.test.mjs` | 9 | Every preset child package resolves, so the preset can mount |
 | `bridge-parse.test.mjs` | 7 | No event or matcher is silently dropped |
 
-188 checks across 12 suites.
+203 checks across 13 suites.
 
 Diagnostic helpers, which read the authoritative session log rather than guessing:
 
@@ -236,6 +237,44 @@ and rewrote a `*.tmp` file with `sed`, both Claude Code shapes that do not exist
 here. These notes are append-only, nothing is mutated in place, and a write
 failure is logged and swallowed — a memory hook must never be able to break the
 session it is recording.
+
+## DSH version compatibility
+
+Tested against `0.2.0-rc.2` (the `latest` channel) and `0.2.1-alpha.2` (the `alpha`
+channel). One contract changed between them, and the adaptation is written so
+that both keep working.
+
+| Contract | 0.2.0-rc.2 | 0.2.1-alpha.2 |
+|---|---|---|
+| Session directory | `session.header.cwd`, fixed at session creation | `ctx.workingDirectory`, mutable mid-session |
+| Where hooks run | the workspace root | the session's **current** directory |
+| `dsh-skill`, `dsh-agent-preset`, `dsh-persona` | — | unchanged |
+
+**What changed, and why it matters.** In 0.2.1 a session can change its working
+directory, so the hook payload's `cwd` is no longer the project root. A hook that
+trusted a single `cwd` value would treat the *original* workspace as foreign after
+a directory change, and block a routine `rm -rf <project>/dist` or a legitimate
+documentation edit.
+
+**How this plugin adapts.** The hooks read every available signal — the payload
+`cwd`, `CLAUDE_PROJECT_DIR`, and `DSH_WORKSPACE` — and treat their union as the
+session's zone. That is correct under either contract: on 0.2.0 the signals agree,
+and on 0.2.1 they both still describe where the session legitimately works.
+Nothing branches on a version number, which is what makes it hold on 0.2.0, on
+0.2.1, and on versions not yet published.
+
+Verify it yourself against any two versions:
+
+```bash
+node scripts/check-surface.mjs 0.2.0-rc.2 0.2.1-alpha.2   # every consumed API surface
+node tests/dual-version.test.mjs                          # behaviour under both contracts
+```
+
+`check-surface.mjs` asserts that every harness API the plugin consumes is present:
+skill provider registration, `session/event`, `agent/disposed`, the hook bridge
+config, the preset schema, the persona prefix, the client module loader, and the
+`settings.section` slot. Run it after a harness upgrade — a breaking change then
+becomes a named failure instead of a runtime surprise.
 
 ## Known limits
 

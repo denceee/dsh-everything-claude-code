@@ -39,6 +39,48 @@ export function commandOf(payload) {
   return payload?.tool_input?.command ?? '';
 }
 
+/** Normalize a path for comparison: forward slashes, no trailing slash, lowercase on Windows. */
+export function normalizePath(value) {
+  if (typeof value !== 'string' || value.length === 0) return '';
+  return value.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
+}
+
+/**
+ * The directories that bound a session's allowed zone, newest contract first.
+ *
+ * DSH changed what `cwd` means between 0.2.0 and 0.2.1, and this function is the
+ * whole adaptation:
+ *
+ *   0.2.0-rc.2  the payload `cwd` is the Session header's workspace, fixed at
+ *               session creation, and `CLAUDE_PROJECT_DIR` matches it.
+ *   0.2.1-alpha the payload `cwd` is the Session's *current* directory, which a
+ *               working-directory change can move mid-session. The bridge also
+ *               introduced `ctx.workingDirectory` and a
+ *               `working-directory/change` event; `CLAUDE_PROJECT_DIR` follows
+ *               the current directory unless the config pins `projectDir`.
+ *
+ * Rather than branch on a version, the hooks read both signals and treat their
+ * union as the allowed zone. That is correct under either contract: on 0.2.0 the
+ * two are the same directory, and on 0.2.1 they still describe where the session
+ * is legitimately working. A rule written this way needs no version detection and
+ * cannot silently pick the wrong one.
+ *
+ * @returns absolute-looking directories, deduplicated, in priority order.
+ */
+export function workspaceRoots(payload) {
+  const candidates = [
+    payload?.cwd,
+    process.env.CLAUDE_PROJECT_DIR,
+    process.env.DSH_WORKSPACE,
+  ];
+  const roots = [];
+  for (const candidate of candidates) {
+    const normalized = normalizePath(candidate);
+    if (normalized.length > 0 && !roots.includes(normalized)) roots.push(normalized);
+  }
+  return roots;
+}
+
 /** The target path of a file tool call, for the `write`/`edit` hooks. */
 export function filePathOf(payload) {
   const input = payload?.tool_input ?? {};

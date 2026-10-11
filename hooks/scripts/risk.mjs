@@ -215,29 +215,35 @@ const DESTRUCTIVE = [
  * Detect a destructive command.
  *
  * @param command - the shell command about to run.
- * @param cwd - the session workspace, used to judge whether a delete escapes it.
+ * @param roots - every directory that bounds the session, newest contract first.
+ *   A list rather than a single cwd, because DSH 0.2.1 made the session directory
+ *   mutable: with one value, a legitimate delete of the ORIGINAL workspace would
+ *   read as an escape once the session changed directory.
  * @returns a match with its reason, or undefined.
  */
-export function findDestructive(command, cwd) {
+export function findDestructive(command, roots) {
   const text = String(command);
+  const bases = (Array.isArray(roots) ? roots : [roots])
+    .map((r) => String(r ?? '').replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase())
+    .filter((r) => r.length > 0);
+
   // A dry run mutates nothing; `--dry-run` and `-n` are respected.
   const dryRun = /--dry-run\b|\s-n\b/.test(text);
 
   for (const rule of DESTRUCTIVE) {
     if (!rule.pattern.test(text)) continue;
-    if (dryRun && rule.id !== 'rm-root-home') continue;
+    if (dryRun && rule.id !== 'rm-unscoped-recursive') continue;
     return { id: rule.id, why: rule.why };
   }
 
-  // A recursive delete of an absolute path outside the session workspace.
-  if (cwd && /\brm\s+(-[a-zA-Z]+\s+)*-?[a-zA-Z]*(?:rf|fr)[a-zA-Z]*\s+["']?(?:[A-Za-z]:[\\/]|\/)/.test(text)) {
+  // A recursive delete of an absolute path outside every session directory.
+  if (bases.length > 0 && /\brm\s+(-[a-zA-Z]+\s+)*-?[a-zA-Z]*(?:rf|fr)[a-zA-Z]*\s+["']?(?:[A-Za-z]:[\\/]|\/)/.test(text)) {
     const absolute = [...text.matchAll(/["']?((?:[A-Za-z]:[\\/]|\/)[^"'\s)|;&]*)/g)].map((m) => m[1]);
     const escapes = absolute.filter((p) => {
       const normalized = p.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
-      const base = String(cwd).replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
-      if (normalized === base || normalized.startsWith(`${base}/`)) return false;
-      // A bare drive root or an absolute path elsewhere is the risky case.
-      return true;
+      // Inside ANY known session directory is fine, including the original
+      // workspace after the session has moved elsewhere.
+      return !bases.some((base) => normalized === base || normalized.startsWith(`${base}/`));
     });
     if (escapes.length > 0) {
       return {

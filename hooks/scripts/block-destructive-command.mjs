@@ -12,13 +12,14 @@
  * a guard that fires on routine commands gets switched off, and then it
  * protects nothing.
  */
-import { readPayload, commandOf, block, pass } from './lib.mjs';
+import { readPayload, commandOf, workspaceRoots, block, pass } from './lib.mjs';
 import { findDestructive } from './risk.mjs';
 
 const payload = await readPayload();
-// The session workspace, so a delete of a path inside it is judged routine and
-// one aimed outside it is not.
-const found = findDestructive(commandOf(payload), payload?.cwd ?? process.env.CLAUDE_PROJECT_DIR);
+// Every directory that bounds the session, not just the current one: DSH 0.2.1
+// made the session directory mutable, so a single value would flag a legitimate
+// delete of the original workspace once the session moved elsewhere.
+const found = findDestructive(commandOf(payload), workspaceRoots(payload));
 
 if (found === undefined) {
   pass();

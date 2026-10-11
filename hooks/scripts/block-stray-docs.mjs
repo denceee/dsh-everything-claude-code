@@ -14,7 +14,7 @@
  * outside the repository. Documentation consolidation is a claim about *this
  * project*, so the rule now only applies inside the project.
  */
-import { readPayload, filePathOf, toPosixPath, block, pass } from './lib.mjs';
+import { readPayload, filePathOf, toPosixPath, workspaceRoots, block, pass } from './lib.mjs';
 
 /**
  * Root documents that are always welcome.
@@ -35,15 +35,6 @@ const SCRATCH_DIR = /(^|\/)(AppData\/Local\/Temp|AppData\/Roaming\/Temp|\/tmp|\/
 
 const payload = await readPayload();
 const path = toPosixPath(filePathOf(payload));
-
-/** The session workspace, so the rule can tell "this project" from "elsewhere". */
-function workspaceOf(payload) {
-  const candidate =
-    payload?.cwd ?? process.env.CLAUDE_PROJECT_DIR ?? process.env.DSH_WORKSPACE ?? '';
-  return toPosixPath(candidate).replace(/\/+$/, '').toLowerCase();
-}
-
-const workspace = workspaceOf(payload);
 const lower = path.toLowerCase();
 
 // A relative path is relative to the workspace, so it is inside by definition.
@@ -51,8 +42,13 @@ const lower = path.toLowerCase();
 // backwards and let every relative path through as "outside the project" —
 // which would have silently disabled the rule for the ordinary case.
 const isAbsolute = /^(?:[a-z]:\/|\/)/i.test(lower);
-const outsideWorkspace =
-  isAbsolute && workspace.length > 0 && !lower.startsWith(`${workspace}/`) && lower !== workspace;
+
+// Every directory that bounds the session, newest contract first. DSH 0.2.1 made
+// the session directory mutable, so a file inside the ORIGINAL workspace is still
+// project documentation after the session has changed directory.
+const roots = workspaceRoots(payload);
+const insideAnyRoot = roots.some((root) => lower === root || lower.startsWith(`${root}/`));
+const outsideWorkspace = isAbsolute && roots.length > 0 && !insideAnyRoot;
 
 if (!/\.(md|txt)$/i.test(path)) {
   pass();
