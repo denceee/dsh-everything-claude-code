@@ -27,6 +27,9 @@ import { fileURLToPath } from 'node:url';
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const dryRun = process.argv.includes('--dry-run');
 
+/** Marks a skill generated from resources/; see build-ecc-skills.mjs. */
+const GENERATED_MARKER = 'generated-by: scripts/build-ecc-skills.mjs';
+
 /** Slash command -> the prompt file that carries its content in this bundle. */
 const COMMAND_FILE = {
   tdd: 'tdd.md',
@@ -68,7 +71,7 @@ const REWRITES = [
     'learned skills live under the DSH home, which skill-filesystem scans at rank 400',
   ],
   [
-    /~\/\.claude\/skills\/([a-z-]+)\//g,
+    /~\/\.claude\/skills\/([a-z0-9-]+)\//g,
     '$DSH_HOME/skills/$1/',
     'the DSH skill root replaces the Claude Code one',
   ],
@@ -84,6 +87,26 @@ const REWRITES = [
     /~\/\.claude\/sessions\//g,
     'the DSH session log (~/.dsh/sessions/)',
     'session state is the DSH session log',
+  ],
+  [
+    // The filename form: `` `~/.claude/agents/tdd-guide.md` ``.
+    //
+    // `[^`\s]*` is used for the filename rather than `[a-z0-9-]+\.md`, because the
+    // closing backtick sits directly after the name and a tighter pattern
+    // changes which rules match first. Anchoring on the optional backticks
+    // around the whole path keeps the code span balanced.
+    /`?~\/\.claude\/agents\/[^`\s]*`?/g,
+    (whole) => {
+      // Keep the filename when there is one; fall back to the directory.
+      const file = /agents\/([^`\s/]+)$/.exec(whole.replace(/`/g, ''));
+      return file ? `\`resources/agents/${file[1]}\`` : 'this bundle, under `resources/agents/`';
+    },
+    'DSH has no per-file agent registry; the personas live in this bundle',
+  ],
+  [
+    /`?~\/\.claude\/hooks\/`?/g,
+    'the hook scripts shipped in this bundle under `hooks/scripts/`',
+    'hooks ship with the bundle, not in a Claude home directory',
   ],
   [/(?<![~\w])\.claude\/evals\//g, '.dsh/evals/', 'project-local state belongs under .dsh/'],
   // A bare directory line (`.claude/` with nothing after it, as in a tree
@@ -122,13 +145,21 @@ function rewriteCommand(text) {
     'tdd|plan|e2e|code-review|build-fix|refactor-clean|learn|checkpoint|verify|eval|setup-pm|update-docs|update-codemaps|test-coverage|orchestrate';
   let out = text;
 
-  // (a) backticked bare form
-  out = out.replace(new RegExp('`/(' + NAMES + ')`', 'g'), (whole, name) => {
+  // (a) A whole backticked span, WITH or WITHOUT arguments.
+  //
+  // This must consume both backticks. Handling only the bare `` `/learn` `` form
+  // missed every usage line — `` `/eval define x` ``, `` `/checkpoint [name]` ``
+  // — and matching just the inner `/name` inside a span leaves a dangling
+  // backtick and produces nested, broken markdown.
+  out = out.replace(new RegExp('`/(' + NAMES + ')\\b([^`]*)`', 'g'), (whole, name, rest) => {
     const file = COMMAND_FILE[name];
-    return file ? `\`resources/commands/${file}\`` : whole;
+    if (file === undefined) return whole;
+    const target = `\`resources/commands/${file}\``;
+    const args = rest.trim();
+    return args ? `follow ${target} with \`${args}\`` : target;
   });
 
-  // (b) plain form, keeping any arguments
+  // (b) The plain form outside a span, keeping any arguments.
   out = out.replace(new RegExp(`(^|[\\s(])/(${NAMES})\\b([^\`\\n]*)`, 'gm'), (whole, lead, name, rest) => {
     const file = COMMAND_FILE[name];
     if (file === undefined) return whole;
@@ -162,11 +193,43 @@ function rewriteAgent(text) {
   const ref = (name) => `${name} persona (\`resources/agents/${AGENT_FILE[name]}\`)`;
 
   let out = text;
-  // Rule 1: consume the phrase including any emphasis and the trailing "agent".
+
+  // Rule 0a: the two-line shape some sources use —
+  //   This command invokes the `X` agent located at:
+  //   `~/.claude/agents/X.md`
+  // Collapsed to one line, so the repaired reference does not restate itself.
+  //
+  // This runs before the path rules for a reason proven by trace rather than
+  // reasoning: the second line's span is rewritten first otherwise, and the
+  // result reads as "…persona (…) agent located at:\n`resources/agents/X.md`".
+  // The name may be bare or backticked, hence `\`?` on both sides of it.
+  out = out.replace(
+    /^([^\n]*?)([a-z0-9-]+)`?\s+agent located at:\n[^\n]*~\/\.claude\/agents\/([a-z0-9-]+)\.md[^\n]*$/gm,
+    (_w, lead, name, file) => `${lead}${file} persona at \`resources/agents/${file}.md\`:`
+  );
+  // Any surviving "…persona (…) agent located at:" loses the dangling words.
+  out = out.replace(/(persona \(`resources\/agents\/[a-z0-9-]+\.md`\))\s+agent located at:/g, '$1:');
+
+  // Rule 0: a whole backticked span naming an agent, e.g. `` `tdd-guide` ``.
+  // Consuming both backticks is required: replacing only the inner name leaves
+  // the source's own backticks around the new reference and nests them.
+  out = out.replace(new RegExp('`(' + names + ')`', 'g'), (_w, name) => ref(name));
+
+  // Rule 1: consume the phrase including any emphasis and the trailing "agent",
+  // so no dangling word survives: "invokes the **tdd-guide** agent" must not
+  // become "invokes the **tdd-guide persona (…)** agent".
   out = out.replace(new RegExp(`[Uu]se (?:the )?\\*{0,2}(${names})\\*{0,2} agent`, 'g'), (_w, name) => ref(name));
+  out = out.replace(new RegExp(`\\*{0,2}(${names})\\*{0,2} agent\\b`, 'g'), (_w, name) => ref(name));
+
   // Rule 2: remaining bare names, never one already inside a reference or path.
   out = out.replace(new RegExp(`\\b(${names})\\b(?!\\.md)(?! persona)`, 'g'), (_w, name) => ref(name));
-  return out;
+
+  // Rule 4: a leftover "persona (…) agent" reads wrong; drop the trailing noun.
+  out = out.replace(/(persona \(`resources\/agents\/[a-z0-9-]+\.md`\))\s+agent\b/g, '$1');
+
+  // Rule 5 (post-pass): join a "located at:" line with the persona path that
+  // follows it, so the repaired reference does not restate itself.
+  return collapseLocatedAt(out);
 }
 
 /** Rewrite Claude Code tool names inside backticks and matcher expressions. */
@@ -215,6 +278,58 @@ function rewriteTools(text) {
   return out;
 }
 
+/**
+ * Normalize line endings before any rewriting.
+ *
+ * Every resource file in this bundle uses CRLF (they come from a Windows
+ * checkout), while the multi-line patterns here are written with `\n`. That
+ * mismatch is silent: a pattern like `…located at:[ \t]*\n[ \t]*`…` never
+ * matches because `\r` sits between, so the rule appears to work while doing
+ * nothing. Several rounds of "the regex must be wrong" traced back to this.
+ */
+function normalizeEol(text) {
+  return text.replace(/\r\n/g, '\n');
+}
+
+/** Restore the file's original line ending so a rewrite does not reformat it. */
+function restoreEol(text, hadCrlf) {
+  return hadCrlf ? text.replace(/\n/g, '\r\n') : text;
+}
+
+/**
+ * Collapse a line ending in "located at:" with the persona path on the next line.
+ *
+ * Written as a line-by-line pass rather than a regex, after three regex attempts
+ * each failed for a different incidental reason (CRLF, backticked vs bare name,
+ * match ordering). A line walk has none of those failure modes: it looks at two
+ * adjacent lines and joins them when the second is nothing but a path.
+ */
+function collapseLocatedAt(text) {
+  const lines = text.split('\n');
+  const out = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    const next = lines[i + 1];
+    if (
+      next !== undefined &&
+      /located at:\s*$/.test(line) &&
+      /^\s*`resources\/agents\/[a-z0-9-]+\.md`\s*$/.test(next)
+    ) {
+      // Join: "…invokes the X persona (…) located at:" + "`resources/agents/X.md`"
+      // becomes "…invokes the X persona at `resources/agents/X.md`:"
+      const merged = line
+        .replace(/\s*located at:\s*$/, ` at ${next.trim()}:`)
+        .replace(/(persona \(`resources\/agents\/[a-z0-9-]+\.md`\))\s+at\b/, 'persona at')
+        .replace(/persona \(`resources\/agents\/([a-z0-9-]+)\.md`\)\s+at\s+`resources\/agents\/\1\.md`:/, 'persona at `resources/agents/$1.md`:');
+      out.push(merged);
+      i += 1; // consume the path line
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join('\n');
+}
+
 /** Apply every rewrite to one string. */
 function adapt(text) {
   let out = text;
@@ -233,29 +348,53 @@ function adapt(text) {
 /**
  * The files whose prose the model can actually read.
  *
- * Every skill and every rule file is enumerated from disk rather than listed by
- * hand: a hand-written list silently skips a file, and a skipped rule keeps
- * telling the model to use an agent that does not exist.
+ * Enumerated from disk rather than listed by hand: a hand-written list silently
+ * skips a file, and a skipped file keeps telling the model to use an agent that
+ * does not exist. That is not hypothetical — this function originally covered
+ * only `skills/` and the three injected rules, so the defects in
+ * `resources/commands/` and `resources/agents/` flowed straight into the 24
+ * skills generated from them.
  */
 function targets() {
   const list = [];
+  const addDir = (dir, filter) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir)) {
+      if (filter(entry)) list.push(join(dir, entry));
+    }
+  };
+
   const skillsDir = join(packageRoot, 'skills');
   for (const name of readdirSync(skillsDir)) {
     const file = join(skillsDir, name, 'SKILL.md');
-    if (existsSync(file)) list.push(file);
+    if (!existsSync(file)) continue;
+    // Generated skills are rebuilt from resources/ by build-ecc-skills.mjs, so
+    // editing them here would be overwritten on the next generation. Their
+    // defects are fixed at the source instead.
+    if (readFileSync(file, 'utf8').includes(GENERATED_MARKER)) continue;
+    list.push(file);
   }
-  const rulesDir = join(packageRoot, 'resources', 'rules');
-  for (const rule of readdirSync(rulesDir)) {
-    if (rule.endsWith('.md')) list.push(join(rulesDir, rule));
-  }
+
+  // Rule files are injected at SessionStart; commands and agents are the
+  // sources the generated `ecc-*` skills are built from, so a defect here
+  // propagates into every skill generated from it.
+  addDir(join(packageRoot, 'resources', 'rules'), (f) => f.endsWith('.md'));
+  addDir(join(packageRoot, 'resources', 'commands'), (f) => f.endsWith('.md'));
+  addDir(join(packageRoot, 'resources', 'agents'), (f) => f.endsWith('.md'));
+
   return list;
 }
 
 const report = [];
 for (const file of targets()) {
-  const before = readFileSync(file, 'utf8');
-  const after = adapt(before);
-  const changed = after !== before;
+  const original = readFileSync(file, 'utf8');
+  // Normalize before adapting and restore after, so the multi-line rules match
+  // and the file keeps whatever line ending it arrived with.
+  const hadCrlf = original.includes('\r\n');
+  const before = normalizeEol(original);
+  const adapted = adapt(before);
+  const after = restoreEol(adapted, hadCrlf);
+  const changed = after !== original;
   if (changed && !dryRun) writeFileSync(file, after, 'utf8');
   report.push({
     file: relative(packageRoot, file).replaceAll('\\', '/'),

@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 ---
 description: Generate and run end-to-end tests with Playwright. Creates test journeys, runs tests, captures screenshots/videos/traces, and uploads artifacts.
@@ -7,7 +7,7 @@ description: Generate and run end-to-end tests with Playwright. Creates test jou
 
 # E2E Command
 
-This command invokes the **e2e-runner** agent to generate, maintain, and execute end-to-end tests using Playwright.
+This command invokes the e2e-runner persona (`resources/agents/e2e-runner.md`) to generate, maintain, and execute end-to-end tests using Playwright.
 
 ## What This Command Does
 
@@ -19,7 +19,7 @@ This command invokes the **e2e-runner** agent to generate, maintain, and execute
 
 ## When to Use
 
-Use `/e2e` when:
+Use `resources/commands/e2e.md` when:
 - Testing critical user journeys (login, trading, payments)
 - Verifying multi-step flows work end-to-end
 - Testing UI interactions and navigation
@@ -28,7 +28,7 @@ Use `/e2e` when:
 
 ## How It Works
 
-The e2e-runner agent will:
+The e2e-runner persona (`resources/agents/e2e-runner.md`) will:
 
 1. **Analyze user flow** and identify test scenarios
 2. **Generate Playwright test** using Page Object Model pattern
@@ -40,9 +40,9 @@ The e2e-runner agent will:
 ## Example Usage
 
 ```
-User: /e2e Test the market search and view flow
+User: follow `resources/commands/e2e.md` with `Test the market search and view flow`
 
-Agent (e2e-runner):
+Agent (e2e-runner persona (`resources/agents/e2e-runner.md`)):
 # E2E Test Generation: Market Search and View Flow
 
 ## Test Scenario Identified
@@ -333,15 +333,14 @@ For PMX, prioritize these E2E tests:
 
 ## Integration with Other Commands
 
-- Use `/plan` to identify critical journeys to test
-- Use `/tdd` for unit tests (faster, more granular)
-- Use `/e2e` for integration and user journey tests
-- Use `/code-review` to verify test quality
+- Use `resources/commands/plan.md` to identify critical journeys to test
+- Use `resources/commands/tdd.md` for unit tests (faster, more granular)
+- Use `resources/commands/e2e.md` for integration and user journey tests
+- Use `resources/commands/code-review.md` to verify test quality
 
 ## Related Agents
 
-This command invokes the `e2e-runner` agent located at:
-`~/.claude/agents/e2e-runner.md`
+This command invokes the e2e-runner persona at `resources/agents/e2e-runner.md`:
 
 ## Quick Commands
 

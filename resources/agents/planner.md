@@ -1,8 +1,8 @@
 <!-- dsh-adaptation -->
-> **DSH Persona** — In Claude Code this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
+> **DSH Persona** — In DSH this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
 
 ---
-name: planner
+name: planner persona (`resources/agents/planner.md`)
 description: Expert planning specialist for complex features and refactoring. Use PROACTIVELY when users request feature implementation, architectural changes, or complex refactoring. Automatically activated for planning tasks.
 tools: read, grep, glob
 model: opus

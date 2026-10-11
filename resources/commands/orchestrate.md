@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 # Orchestrate Command
 
@@ -7,32 +7,32 @@ Sequential agent workflow for complex tasks.
 
 ## Usage
 
-`/orchestrate [workflow-type] [task-description]`
+follow `resources/commands/orchestrate.md` with `[workflow-type] [task-description]`
 
 ## Workflow Types
 
 ### feature
 Full feature implementation workflow:
 ```
-planner -> tdd-guide -> code-reviewer -> security-reviewer
+planner persona (`resources/agents/planner.md`) -> tdd-guide persona (`resources/agents/tdd-guide.md`) -> code-reviewer persona (`resources/agents/code-reviewer.md`) -> security-reviewer persona (`resources/agents/security-reviewer.md`)
 ```
 
 ### bugfix
 Bug investigation and fix workflow:
 ```
-explorer -> tdd-guide -> code-reviewer
+explorer -> tdd-guide persona (`resources/agents/tdd-guide.md`) -> code-reviewer persona (`resources/agents/code-reviewer.md`)
 ```
 
 ### refactor
 Safe refactoring workflow:
 ```
-architect -> code-reviewer -> tdd-guide
+architect -> code-reviewer persona (`resources/agents/code-reviewer.md`) -> tdd-guide persona (`resources/agents/tdd-guide.md`)
 ```
 
 ### security
 Security-focused review:
 ```
-security-reviewer -> code-reviewer -> architect
+security-reviewer persona (`resources/agents/security-reviewer.md`) -> code-reviewer persona (`resources/agents/code-reviewer.md`) -> architect
 ```
 
 ## Execution Pattern
@@ -70,7 +70,7 @@ Between agents, create handoff document:
 ## Example: Feature Workflow
 
 ```
-/orchestrate feature "Add user authentication"
+follow `resources/commands/orchestrate.md` with `feature "Add user authentication"`
 ```
 
 Executes:
@@ -79,19 +79,19 @@ Executes:
    - Analyzes requirements
    - Creates implementation plan
    - Identifies dependencies
-   - Output: `HANDOFF: planner -> tdd-guide`
+   - Output: `HANDOFF: planner persona (`resources/agents/planner.md`) -> tdd-guide persona (`resources/agents/tdd-guide.md`)`
 
 2. **TDD Guide Agent**
-   - Reads planner handoff
+   - Reads planner persona (`resources/agents/planner.md`) handoff
    - Writes tests first
    - Implements to pass tests
-   - Output: `HANDOFF: tdd-guide -> code-reviewer`
+   - Output: `HANDOFF: tdd-guide persona (`resources/agents/tdd-guide.md`) -> code-reviewer persona (`resources/agents/code-reviewer.md`)`
 
 3. **Code Reviewer Agent**
    - Reviews implementation
    - Checks for issues
    - Suggests improvements
-   - Output: `HANDOFF: code-reviewer -> security-reviewer`
+   - Output: `HANDOFF: code-reviewer persona (`resources/agents/code-reviewer.md`) -> security-reviewer persona (`resources/agents/security-reviewer.md`)`
 
 4. **Security Reviewer Agent**
    - Security audit
@@ -106,7 +106,7 @@ ORCHESTRATION REPORT
 ====================
 Workflow: feature
 Task: Add user authentication
-Agents: planner -> tdd-guide -> code-reviewer -> security-reviewer
+Agents: planner persona (`resources/agents/planner.md`) -> tdd-guide persona (`resources/agents/tdd-guide.md`) -> code-reviewer persona (`resources/agents/code-reviewer.md`) -> security-reviewer persona (`resources/agents/security-reviewer.md`)
 
 SUMMARY
 -------
@@ -143,8 +143,8 @@ For independent checks, run agents in parallel:
 ```markdown
 ### Parallel Phase
 Run simultaneously:
-- code-reviewer (quality)
-- security-reviewer (security)
+- code-reviewer persona (`resources/agents/code-reviewer.md`) (quality)
+- security-reviewer persona (`resources/agents/security-reviewer.md`) (security)
 - architect (design)
 
 ### Merge Results
@@ -163,13 +163,13 @@ $ARGUMENTS:
 ## Custom Workflow Example
 
 ```
-/orchestrate custom "architect,tdd-guide,code-reviewer" "Redesign caching layer"
+follow `resources/commands/orchestrate.md` with `custom "architect,tdd-guide persona (`resources/agents/tdd-guide.md`),code-reviewer persona (`resources/agents/code-reviewer.md`)" "Redesign caching layer"`
 ```
 
 ## Tips
 
-1. **Start with planner** for complex features
-2. **Always include code-reviewer** before merge
-3. **Use security-reviewer** for auth/payment/PII
+1. **Start with planner persona (`resources/agents/planner.md`)** for complex features
+2. **Always include code-reviewer persona (`resources/agents/code-reviewer.md`)** before merge
+3. **Use security-reviewer persona (`resources/agents/security-reviewer.md`)** for auth/payment/PII
 4. **Keep handoffs concise** - focus on what next agent needs
 5. **Run verification** between agents if needed

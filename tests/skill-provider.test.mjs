@@ -93,11 +93,19 @@ await check('the provider factory returns a provider', () => {
 });
 
 let candidates;
-await check('list() returns every skill as a candidate', async () => {
+await check('list() returns every skill on disk as a candidate', async () => {
   const out = await provider.list({});
   candidates = Array.isArray(out) ? out : out.candidates;
   assert(Array.isArray(candidates), 'list() did not return an array');
-  assert(candidates.length === 11, `expected 11 candidates, got ${candidates.length}`);
+  // Counted from disk rather than hard-coded: the bundle ships ported skills
+  // plus the generated `ecc-*` command and persona skills, and that number moves.
+  const onDisk = readdirSync(join(packageRoot, 'skills')).filter((n) =>
+    existsSync(join(packageRoot, 'skills', n, 'SKILL.md')),
+  );
+  assert(
+    candidates.length === onDisk.length,
+    `expected ${onDisk.length} candidates (one per skill on disk), got ${candidates.length}`,
+  );
 });
 
 await check('no candidate carries a content body (bodies must load on demand)', () => {

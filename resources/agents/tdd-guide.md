@@ -1,8 +1,8 @@
 <!-- dsh-adaptation -->
-> **DSH Persona** — In Claude Code this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
+> **DSH Persona** — In DSH this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
 
 ---
-name: tdd-guide
+name: tdd-guide persona (`resources/agents/tdd-guide.md`)
 description: Test-Driven Development specialist enforcing write-tests-first methodology. Use PROACTIVELY when writing new features, fixing bugs, or refactoring code. Ensures 80%+ test coverage.
 tools: read, write, edit, pwsh, grep
 model: opus

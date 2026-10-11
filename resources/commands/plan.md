@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 ---
 description: Restate requirements, assess risks, and create step-by-step implementation plan. WAIT for user CONFIRM before touching any code.
@@ -7,7 +7,7 @@ description: Restate requirements, assess risks, and create step-by-step impleme
 
 # Plan Command
 
-This command invokes the **planner** agent to create a comprehensive implementation plan before writing any code.
+This command invokes the planner persona (`resources/agents/planner.md`) to create a comprehensive implementation plan before writing any code.
 
 ## What This Command Does
 
@@ -18,7 +18,7 @@ This command invokes the **planner** agent to create a comprehensive implementat
 
 ## When to Use
 
-Use `/plan` when:
+Use `resources/commands/plan.md` when:
 - Starting a new feature
 - Making significant architectural changes
 - Working on complex refactoring
@@ -27,7 +27,7 @@ Use `/plan` when:
 
 ## How It Works
 
-The planner agent will:
+The planner persona (`resources/agents/planner.md`) will:
 
 1. **Analyze the request** and restate requirements in clear terms
 2. **Break down into phases** with specific, actionable steps
@@ -39,9 +39,9 @@ The planner agent will:
 ## Example Usage
 
 ```
-User: /plan I need to add real-time notifications when markets resolve
+User: follow `resources/commands/plan.md` with `I need to add real-time notifications when markets resolve`
 
-Agent (planner):
+Agent (planner persona (`resources/agents/planner.md`)):
 # Implementation Plan: Real-Time Market Resolution Notifications
 
 ## Requirements Restatement
@@ -96,7 +96,7 @@ Agent (planner):
 
 ## Important Notes
 
-**CRITICAL**: The planner agent will **NOT** write any code until you explicitly confirm the plan with "yes" or "proceed" or similar affirmative response.
+**CRITICAL**: The planner persona (`resources/agents/planner.md`) will **NOT** write any code until you explicitly confirm the plan with "yes" or "proceed" or similar affirmative response.
 
 If you want changes, respond with:
 - "modify: [your changes]"
@@ -106,11 +106,10 @@ If you want changes, respond with:
 ## Integration with Other Commands
 
 After planning:
-- Use `/tdd` to implement with test-driven development
+- Use `resources/commands/tdd.md` to implement with test-driven development
 - Use `/build-and-fix` if build errors occur
-- Use `/code-review` to review completed implementation
+- Use `resources/commands/code-review.md` to review completed implementation
 
 ## Related Agents
 
-This command invokes the `planner` agent located at:
-`~/.claude/agents/planner.md`
+This command invokes the planner persona at `resources/agents/planner.md`:

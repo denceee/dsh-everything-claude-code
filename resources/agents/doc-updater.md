@@ -1,9 +1,9 @@
 <!-- dsh-adaptation -->
-> **DSH Persona** — In Claude Code this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
+> **DSH Persona** — In DSH this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
 
 ---
-name: doc-updater
-description: Documentation and codemap specialist. Use PROACTIVELY for updating codemaps and documentation. Runs /update-codemaps and /update-docs, generates docs/CODEMAPS/*, updates READMEs and guides.
+name: doc-updater persona (`resources/agents/doc-updater.md`)
+description: Documentation and codemap specialist. Use PROACTIVELY for updating codemaps and documentation. Runs follow `resources/commands/update-codemaps.md` with `and follow `resources/commands/update-docs.md` with `, generates docs/CODEMAPS/*, updates READMEs and guides.``
 tools: read, write, edit, pwsh, grep, glob
 model: opus
 ---

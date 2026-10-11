@@ -90,14 +90,38 @@ check('no Claude Code tool name is used as a tool', () => {
 });
 
 check('no bare Claude Code subagent name is presented as a DSH agent', () => {
-  // The name may appear inside the path that carries it
-  // (`resources/agents/tdd-guide.md`) and inside a resolved persona reference
-  // (`tdd-guide persona (...)`). What must not survive is the *bare* name — a
-  // reader told "use the tdd-guide agent" has nothing to resolve in DSH.
-  const bare = /\b(tdd-guide|security-reviewer|e2e-runner|build-error-resolver|refactor-cleaner|doc-updater)\b(?! persona)(?!\.md)(?!`)/;
-  const hits = find(bare);
-  assert(hits.length === 0, `found:\n      ${hits.join('\n      ')}`);
-  return 'every agent name resolves through a persona reference';
+  // The name may legitimately appear in three places that are NOT instructions:
+  //   - inside the path that carries it (`resources/agents/tdd-guide.md`)
+  //   - inside a resolved persona reference (`tdd-guide persona (…)`)
+  //   - as an identifier: the skill's own `name: ecc-tdd-guide` and its H1
+  // What must not survive is the *bare* name in prose — a reader told
+  // "use the tdd-guide agent" has nothing to resolve in DSH.
+  const bare =
+    /\b(tdd-guide|security-reviewer|e2e-runner|build-error-resolver|refactor-cleaner|doc-updater)\b(?! persona)(?!\.md)(?!`)/;
+  const problems = [];
+  for (const { file, kind } of files) {
+    let inFence = false;
+    readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .forEach((line, index) => {
+        if (/^\s*```/.test(line)) {
+          inFence = !inFence;
+          return;
+        }
+        if (inFence) return;
+        const trimmed = line.trim();
+        // Skip identifier positions: YAML keys and headings.
+        if (/^(name|description|title)\s*:/.test(trimmed)) return;
+        if (trimmed.startsWith('#')) return;
+        if (bare.test(trimmed)) {
+          problems.push(
+            `${relative(packageRoot, file).replaceAll('\\', '/')}:${index + 1} (${kind}) ${trimmed.slice(0, 110)}`,
+          );
+        }
+      });
+  }
+  assert(problems.length === 0, `found:\n      ${problems.join('\n      ')}`);
+  return 'every agent name in prose resolves through a persona reference';
 });
 
 check('the mapped replacements actually point at things that exist', () => {
@@ -148,6 +172,37 @@ check('no inline code span is left with an unbalanced backtick', () => {
   }
   assert(problems.length === 0, `found:\n      ${problems.join('\n      ')}`);
   return 'every inline span is balanced';
+});
+
+check('every path the prose points at actually exists', () => {
+  // A rewriter that maps `~/.claude/` to `~/.dsh/` wholesale once fabricated
+  // `~/.dsh/agents/<name>.md`, a path DSH does not have. Any path the model is
+  // told to read must resolve, or the instruction wastes a step.
+  const problems = [];
+  for (const { file, kind } of files) {
+    readFileSync(file, 'utf8')
+      .split(/\r?\n/)
+      .forEach((line, index) => {
+        // In-repo paths: `resources/...`, `skills/...`, `hooks/...`.
+        for (const m of line.matchAll(/`((?:resources|skills|hooks)\/[A-Za-z0-9_./-]+)`/g)) {
+          const target = join(packageRoot, m[1]);
+          if (!existsSync(target)) {
+            problems.push(
+              `${relative(packageRoot, file).replaceAll('\\', '/')}:${index + 1} (${kind}) missing ${m[1]}`,
+            );
+          }
+        }
+        // Fabricated home paths: DSH has no agents/, commands/ or rules/ under
+        // the DSH home, so those forms are always wrong.
+        if (/~\/\.dsh\/(agents|commands|rules)\//.test(line)) {
+          problems.push(
+            `${relative(packageRoot, file).replaceAll('\\', '/')}:${index + 1} (${kind}) fabricated home path: ${line.trim().slice(0, 90)}`,
+          );
+        }
+      });
+  }
+  assert(problems.length === 0, `found:\n      ${problems.join('\n      ')}`);
+  return 'every referenced path resolves';
 });
 
 for (const r of results) {

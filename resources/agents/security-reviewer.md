@@ -1,8 +1,8 @@
 <!-- dsh-adaptation -->
-> **DSH Persona** — In Claude Code this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
+> **DSH Persona** — In DSH this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
 
 ---
-name: security-reviewer
+name: security-reviewer persona (`resources/agents/security-reviewer.md`)
 description: Security vulnerability detection and remediation specialist. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. Flags secrets, SSRF, injection, unsafe crypto, and OWASP Top 10 vulnerabilities.
 tools: read, write, edit, pwsh, grep, glob
 model: opus
@@ -353,7 +353,7 @@ console.log('User login:', {
 
 **File/Component:** [path/to/file.ts]
 **Reviewed:** YYYY-MM-DD
-**Reviewer:** security-reviewer agent
+**Reviewer:** security-reviewer persona (`resources/agents/security-reviewer.md`)
 
 ## Summary
 
@@ -435,7 +435,7 @@ When reviewing PRs, post inline comments:
 ```markdown
 ## Security Review
 
-**Reviewer:** security-reviewer agent
+**Reviewer:** security-reviewer persona (`resources/agents/security-reviewer.md`)
 **Risk Level:** 🔴 HIGH / 🟡 MEDIUM / 🟢 LOW
 
 ### Blocking Issues
@@ -456,7 +456,7 @@ When reviewing PRs, post inline comments:
 
 ---
 
-> Security review performed by Claude Code security-reviewer agent
+> Security review performed by DSH security-reviewer persona (`resources/agents/security-reviewer.md`)
 > For questions, see docs/SECURITY.md
 ```
 

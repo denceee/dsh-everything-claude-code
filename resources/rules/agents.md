@@ -5,7 +5,7 @@
 
 ## Available Agents
 
-Located in `~/.dsh/agents/`:
+Located in this bundle, under `resources/agents/`:
 
 | Agent | Purpose | When to Use |
 |-------|---------|-------------|

@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 ---
 description: Enforce test-driven development workflow. Scaffold interfaces, generate tests FIRST, then implement minimal code to pass. Ensure 80%+ coverage.
@@ -7,7 +7,7 @@ description: Enforce test-driven development workflow. Scaffold interfaces, gene
 
 # TDD Command
 
-This command invokes the **tdd-guide** agent to enforce test-driven development methodology.
+This command invokes the tdd-guide persona (`resources/agents/tdd-guide.md`) to enforce test-driven development methodology.
 
 ## What This Command Does
 
@@ -19,7 +19,7 @@ This command invokes the **tdd-guide** agent to enforce test-driven development 
 
 ## When to Use
 
-Use `/tdd` when:
+Use `resources/commands/tdd.md` when:
 - Implementing new features
 - Adding new functions/components
 - Fixing bugs (write test that reproduces bug first)
@@ -28,7 +28,7 @@ Use `/tdd` when:
 
 ## How It Works
 
-The tdd-guide agent will:
+The tdd-guide persona (`resources/agents/tdd-guide.md`) will:
 
 1. **Define interfaces** for inputs/outputs
 2. **Write tests that will FAIL** (because code doesn't exist yet)
@@ -52,9 +52,9 @@ REPEAT:   Next feature/scenario
 ## Example Usage
 
 ```
-User: /tdd I need a function to calculate market liquidity score
+User: follow `resources/commands/tdd.md` with `I need a function to calculate market liquidity score`
 
-Agent (tdd-guide):
+Agent (tdd-guide persona (`resources/agents/tdd-guide.md`)):
 # TDD Session: Market Liquidity Score Calculator
 
 ## Step 1: Define Interface (SCAFFOLD)
@@ -288,7 +288,7 @@ Coverage: 100% ✅ (Target: 80%)
 - External service calls
 - React components with hooks
 
-**E2E Tests** (use `/e2e` command):
+**E2E Tests** (use `resources/commands/e2e.md` command):
 - Critical user flows
 - Multi-step processes
 - Full stack integration
@@ -314,16 +314,15 @@ Never skip the RED phase. Never write code before tests.
 
 ## Integration with Other Commands
 
-- Use `/plan` first to understand what to build
-- Use `/tdd` to implement with tests
+- Use `resources/commands/plan.md` first to understand what to build
+- Use `resources/commands/tdd.md` to implement with tests
 - Use `/build-and-fix` if build errors occur
-- Use `/code-review` to review implementation
-- Use `/test-coverage` to verify coverage
+- Use `resources/commands/code-review.md` to review implementation
+- Use `resources/commands/test-coverage.md` to verify coverage
 
 ## Related Agents
 
-This command invokes the `tdd-guide` agent located at:
-`~/.claude/agents/tdd-guide.md`
+This command invokes the tdd-guide persona at `resources/agents/tdd-guide.md`:
 
 And can reference the `tdd-workflow` skill at:
-`~/.claude/skills/tdd-workflow/`
+`$DSH_HOME/skills/tdd-workflow/`

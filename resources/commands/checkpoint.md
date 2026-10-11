@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 # Checkpoint Command
 
@@ -7,18 +7,18 @@ Create or verify a checkpoint in your workflow.
 
 ## Usage
 
-`/checkpoint [create|verify|list] [name]`
+follow `resources/commands/checkpoint.md` with `[create|verify|list] [name]`
 
 ## Create Checkpoint
 
 When creating a checkpoint:
 
-1. Run `/verify quick` to ensure current state is clean
+1. Run follow `resources/commands/verify.md` with `quick` to ensure current state is clean
 2. Create a git stash or commit with checkpoint name
-3. Log checkpoint to `.claude/checkpoints.log`:
+3. Log checkpoint to `.dsh/checkpoints.log`:
 
 ```bash
-echo "$(date +%Y-%m-%d-%H:%M) | $CHECKPOINT_NAME | $(git rev-parse --short HEAD)" >> .claude/checkpoints.log
+echo "$(date +%Y-%m-%d-%H:%M) | $CHECKPOINT_NAME | $(git rev-parse --short HEAD)" >> .dsh/checkpoints.log
 ```
 
 4. Report checkpoint created
@@ -57,15 +57,15 @@ Show all checkpoints with:
 Typical checkpoint flow:
 
 ```
-[Start] --> /checkpoint create "feature-start"
+[Start] --> follow `resources/commands/checkpoint.md` with `create "feature-start"`
    |
-[Implement] --> /checkpoint create "core-done"
+[Implement] --> follow `resources/commands/checkpoint.md` with `create "core-done"`
    |
-[Test] --> /checkpoint verify "core-done"
+[Test] --> follow `resources/commands/checkpoint.md` with `verify "core-done"`
    |
-[Refactor] --> /checkpoint create "refactor-done"
+[Refactor] --> follow `resources/commands/checkpoint.md` with `create "refactor-done"`
    |
-[PR] --> /checkpoint verify "feature-start"
+[PR] --> follow `resources/commands/checkpoint.md` with `verify "feature-start"`
 ```
 
 ## Arguments

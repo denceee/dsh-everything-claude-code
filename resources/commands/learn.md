@@ -1,13 +1,13 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
-# /learn - Extract Reusable Patterns
+# follow `resources/commands/learn.md` with `- Extract Reusable Patterns`
 
 Analyze the current session and extract any patterns worth saving as skills.
 
 ## Trigger
 
-Run `/learn` at any point during a session when you've solved a non-trivial problem.
+Run `resources/commands/learn.md` at any point during a session when you've solved a non-trivial problem.
 
 ## What to Extract
 
@@ -36,7 +36,7 @@ Look for:
 
 ## Output Format
 
-Create a skill file at `~/.claude/skills/learned/[pattern-name].md`:
+Create a skill file at `$DSH_HOME/skills/learned/[pattern-name].md`:
 
 ```markdown
 # [Descriptive Pattern Name]
@@ -63,7 +63,7 @@ Create a skill file at `~/.claude/skills/learned/[pattern-name].md`:
 2. Identify the most valuable/reusable insight
 3. Draft the skill file
 4. Ask user to confirm before saving
-5. Save to `~/.claude/skills/learned/`
+5. Save to `$DSH_HOME/skills/learned/`
 
 ## Notes
 

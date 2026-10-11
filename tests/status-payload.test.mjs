@@ -8,6 +8,7 @@
  *
  * Usage: node tests/status-payload.test.mjs
  */
+import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -74,11 +75,14 @@ await check('registers a skill provider', () => {
 });
 
 let provider;
-await check('the provider lists all 11 skills', async () => {
+await check('the provider lists every skill on disk', async () => {
   provider = providerFactory({ signal: new AbortController().signal, invalidate: () => {} });
   const out = await provider.list({});
   registered.push(...(Array.isArray(out) ? out : out.candidates));
-  assert(registered.length === 11, `expected 11 skills, got ${registered.length}`);
+  const onDisk = readdirSync(join(packageRoot, 'skills')).filter((n) =>
+    existsSync(join(packageRoot, 'skills', n, 'SKILL.md')),
+  );
+  assert(registered.length === onDisk.length, `expected ${onDisk.length} skills, got ${registered.length}`);
 });
 
 await check('registers exactly one status route', () => {

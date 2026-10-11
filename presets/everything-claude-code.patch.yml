@@ -44,10 +44,24 @@
                 - Review security on every change: validate input, parameterize queries,
                   do not leak sensitive data in errors.
 
-                Load the ECC skills with the skill tool when a task matches one
-                (`tdd-workflow`, `verification-loop`, `security-review`,
-                `coding-standards`, `backend-patterns`, `frontend-patterns`,
-                `continuous-learning`, `strategic-compact`, `eval-harness`).
+                Load an ECC skill with the skill tool when a task matches one. The
+                ported guidance skills are `tdd-workflow`, `verification-loop`,
+                `security-review`, `coding-standards`, `backend-patterns`,
+                `frontend-patterns`, `continuous-learning`, `strategic-compact`
+                and `eval-harness`.
+
+                The ported slash commands and agent roles are skills too, under the
+                `ecc-` prefix, so both the user and you can reach them:
+                `ecc-tdd`, `ecc-plan`, `ecc-code-review`, `ecc-verify`, `ecc-e2e`,
+                `ecc-eval`, `ecc-learn`, `ecc-checkpoint`, `ecc-build-fix`,
+                `ecc-refactor-clean`, `ecc-test-coverage`, `ecc-update-docs`,
+                `ecc-update-codemaps`, `ecc-setup-pm`, `ecc-orchestrate`, and the
+                personas `ecc-tdd-guide`, `ecc-security-reviewer`, `ecc-architect`,
+                `ecc-planner`, `ecc-code-reviewer`, `ecc-e2e-runner`,
+                `ecc-build-error-resolver`, `ecc-refactor-cleaner`, `ecc-doc-updater`.
+                To delegate under a persona, pass that persona's text to the
+                `subagent` tool: DSH has no per-file agent registry, so a persona is
+                prompt text rather than a dispatchable agent type.
               suffix: Your working directory is {{cwd}}.
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'

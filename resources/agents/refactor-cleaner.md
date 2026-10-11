@@ -1,8 +1,8 @@
 <!-- dsh-adaptation -->
-> **DSH Persona** — In Claude Code this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
+> **DSH Persona** — In DSH this file defined a subagent type. DSH has no per-file agent registry, so this is a persona prompt: pass its body to `subagent` (or `spawn_teammate`) as the initial instruction, or paste it to adopt the role inline. Its tool list has been mapped to DSH tools.
 
 ---
-name: refactor-cleaner
+name: refactor-cleaner persona (`resources/agents/refactor-cleaner.md`)
 description: Dead code cleanup and consolidation specialist. Use PROACTIVELY for removing unused code, duplicates, and refactoring. Runs analysis tools (knip, depcheck, ts-prune) to identify dead code and safely removes it.
 tools: read, write, edit, pwsh, grep, glob
 model: opus

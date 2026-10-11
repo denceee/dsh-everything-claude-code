@@ -1,5 +1,5 @@
 <!-- dsh-adaptation -->
-> **DSH Prompt** — In Claude Code this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
+> **DSH Prompt** — In DSH this file was a slash command. DSH resolves `/name` through the human-command registry, which never reaches the model, so this is a prompt instead: paste it, or reference the file with @, and the agent follows it as instructions. Its tool names have been mapped to DSH tools.
 
 # Eval Command
 
@@ -7,15 +7,15 @@ Manage eval-driven development workflow.
 
 ## Usage
 
-`/eval [define|check|report|list] [feature-name]`
+follow `resources/commands/eval.md` with `[define|check|report|list] [feature-name]`
 
 ## Define Evals
 
-`/eval define feature-name`
+follow `resources/commands/eval.md` with `define feature-name`
 
 Create a new eval definition:
 
-1. Create `.claude/evals/feature-name.md` with template:
+1. Create `.dsh/evals/feature-name.md` with template:
 
 ```markdown
 ## EVAL: feature-name
@@ -38,15 +38,15 @@ Created: $(date)
 
 ## Check Evals
 
-`/eval check feature-name`
+follow `resources/commands/eval.md` with `check feature-name`
 
 Run evals for a feature:
 
-1. Read eval definition from `.claude/evals/feature-name.md`
+1. Read eval definition from `.dsh/evals/feature-name.md`
 2. For each capability eval:
    - Attempt to verify criterion
    - Record PASS/FAIL
-   - Log attempt in `.claude/evals/feature-name.log`
+   - Log attempt in `.dsh/evals/feature-name.log`
 3. For each regression eval:
    - Run relevant tests
    - Compare against baseline
@@ -63,7 +63,7 @@ Status: IN PROGRESS / READY
 
 ## Report Evals
 
-`/eval report feature-name`
+follow `resources/commands/eval.md` with `report feature-name`
 
 Generate comprehensive eval report:
 
@@ -101,7 +101,7 @@ RECOMMENDATION
 
 ## List Evals
 
-`/eval list`
+follow `resources/commands/eval.md` with `list`
 
 Show all eval definitions:
 
