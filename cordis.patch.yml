@@ -1,0 +1,26 @@
+- insert:
+    # Host half: publishes the adapted everything-claude-code skills into the
+    # DSH skill registry through the runtime provider.
+    - id: everything-claude-code-skills
+      name: 'dsh-everything-claude-code'
+
+    # Hooks half: DSH ships a native Claude Code hook bridge, so the adapted
+    # hook set runs unmodified through it.
+    #
+    # Path note (this is the trap): in a *bundle* patch `baseUrl` is the
+    # **profile root**, not the patch file's own directory (see dsh-app-boot:
+    # `ctx.baseUrl = pathToFileURL(dirname(absoluteConfigPath))`). A relative URL
+    # like `hooks/hooks.json` therefore resolves to `<profile>/hooks/hooks.json`,
+    # which does not exist — and the bridge then logs a warning and silently runs
+    # no hooks at all. The bundle is installed into the profile's node_modules,
+    # so anchor every path on `node_modules/<package>/`.
+    #
+    # `projectDir` is deliberately omitted: the bridge then exports
+    # CLAUDE_PROJECT_DIR per run as the session workspace, which is the directory
+    # the hook process actually runs in.
+    - id: everything-claude-code-hooks
+      name: '@deepseek-ai/dsh-hooks-claude-code'
+      config:
+        configPath: !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/dsh-everything-claude-code/hooks/hooks.json', baseUrl))"
+        pluginRoot: !!js "process.getBuiltinModule('node:url').fileURLToPath(new URL('node_modules/dsh-everything-claude-code/', baseUrl))"
+        defaultTimeoutMs: 60000

@@ -1,0 +1,47 @@
+# dsh-everything-claude-code
+
+This bundle adapts [WorldFlowAI/everything-claude-code](https://github.com/WorldFlowAI/everything-claude-code)
+(ECC) for the DeepSeek Harness (DSH).
+
+## Upstream
+
+| Field | Value |
+|---|---|
+| Source | `https://github.com/WorldFlowAI/everything-claude-code` |
+| License | MIT |
+| Author | Affaan Mustafa |
+| Fetched via | `https://gh-proxy.com/` (direct GitHub is unreachable on the authoring host) |
+
+ECC is itself a fork/derivative of `affaan-m/everything-claude-code`.
+
+## What was reused
+
+Reused with adaptation: the 11 `skills/*/SKILL.md` bodies, the 8 `rules/*.md`,
+the 15 `commands/*.md`, the 9 `agents/*.md`, and the `contexts/*.md` files.
+Their text is preserved; additions are limited to (a) `name`/`description`
+frontmatter required by `dsh-skill-filesystem`, and (b) a leading note on each
+resource file explaining how it is used under DSH.
+
+## What is original to this repository
+
+- `index.js`, `client.js` — the Host and Client halves of the DSH bundle.
+- `hooks/hooks.json` and `hooks/scripts/*.mjs` — the hook set, rewritten so the
+  matchers name DSH tools and blocking uses the channel this bridge honors.
+- `presets/everything-claude-code.patch.yml` — the agent preset.
+- `scripts/adapt-*.mjs` — the idempotent adapters that produced the above.
+- `tests/*` — the test suites.
+
+## Changes made to upstream material
+
+- Tool names in the adapted text were mapped to DSH equivalents where they were
+  machine-readable (backticked names and `tools:` lists).
+- The `PreCompact` and `SessionEnd` hooks were **not** ported: the DSH hook
+  bridge does not support those events, so ECC's memory-persistence behavior is
+  not reproduced. This is a functional gap, stated in the README.
+- The original dev-server hook blocked with exit code 2; that channel does not
+  block in DSH `0.2.0-rc.2`, so blocking now uses
+  `hookSpecificOutput.permissionDecision`.
+
+## License
+
+This repository is MIT (see LICENSE). The upstream material is MIT.

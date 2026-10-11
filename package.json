@@ -1,0 +1,44 @@
+{
+  "name": "dsh-everything-claude-code",
+  "version": "1.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Adapts WorldFlowAI/everything-claude-code to DeepSeek Harness: 11 skills, 15 prompts, 9 personas, an adapted Claude Code hook set, an agent preset, and a Chinese Settings page.",
+  "license": "MIT",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./hooks/hooks.json": "./hooks/hooks.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml",
+        "./presets/everything-claude-code.patch.yml"
+      ]
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  },
+  "meta": {
+    "title": "Everything Claude Code",
+    "description": "Skills, prompts, personas, hooks, and the ECC agent preset."
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "presets",
+    "hooks/hooks.json",
+    "locale/*.json",
+    "skills",
+    "resources"
+  ]
+}
